@@ -195,21 +195,42 @@ function fmt(num, decimals){
   return Number(num).toLocaleString("ko-KR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+function buildProxyUrls(target){
+  const enc = encodeURIComponent(target);
+  return [
+    `https://api.allorigins.win/raw?url=${enc}`,
+    `https://corsproxy.io/?url=${enc}`,
+    `https://api.codetabs.com/v1/proxy?quest=${enc}`,
+    `https://thingproxy.freeboard.io/fetch/${target}`
+  ];
+}
+
 async function fetchQuote(symbol){
-  const target = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
-  const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
-  const res = await fetch(proxied);
-  if(!res.ok) throw new Error("network");
-  const data = await res.json();
-  const result = data?.chart?.result?.[0];
-  if(!result) throw new Error("no data");
-  const meta = result.meta;
-  return {
-    price: meta.regularMarketPrice,
-    prevClose: meta.chartPreviousClose ?? meta.previousClose,
-    time: meta.regularMarketTime,
-    marketState: meta.marketState
-  };
+  const target = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
+  const proxies = buildProxyUrls(target);
+  let lastError = null;
+
+  for(const proxied of proxies){
+    try{
+      const res = await fetch(proxied, { cache: "no-store" });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const result = data?.chart?.result?.[0];
+      if(!result) throw new Error("no data");
+      const meta = result.meta;
+      if(meta.regularMarketPrice == null) throw new Error("no price");
+      return {
+        price: meta.regularMarketPrice,
+        prevClose: meta.chartPreviousClose ?? meta.previousClose,
+        time: meta.regularMarketTime,
+        marketState: meta.marketState
+      };
+    } catch(err){
+      lastError = err;
+      continue;
+    }
+  }
+  throw lastError || new Error("all proxies failed");
 }
 
 function renderCard(card, info, sym){
