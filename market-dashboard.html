@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>마켓 대시보드</title>
+<style>
+  :root{
+    --bg: #10131a;
+    --surface: #1a1f29;
+    --surface-2: #212736;
+    --border: #2a3040;
+    --text: #ece9e2;
+    --text-dim: #8b93a3;
+    --gold: #c9a24b;
+    --up: #e0334f;      /* 한국 증시 관례: 상승 = 빨강 */
+    --down: #2f6fed;    /* 한국 증시 관례: 하락 = 파랑 */
+    --flat: #8b93a3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    padding:28px 18px 60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:22px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:16px;
+  }
+  h1{
+    font-size:1.4rem;
+    font-weight:700;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--text-dim);font-size:0.82rem;}
+  .refresh-btn{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:8px;
+    font-size:0.82rem;
+    cursor:pointer;
+  }
+  .refresh-btn:active{transform:scale(0.97);}
+  .refresh-btn:disabled{opacity:0.5;}
+  .cards{display:flex;flex-direction:column;gap:12px;}
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    left:0;top:0;bottom:0;
+    width:3px;
+    background:var(--gold);
+  }
+  .card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+  }
+  .name{font-size:0.95rem;font-weight:600;color:var(--text);}
+  .code{color:var(--text-dim);font-size:0.72rem;margin-left:6px;}
+  .price-row{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  .price{
+    font-size:2rem;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-0.02em;
+  }
+  .delta{
+    font-size:0.95rem;
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+  .delta.up{color:var(--up);}
+  .delta.down{color:var(--down);}
+  .delta.flat{color:var(--flat);}
+  .meta{
+    margin-top:10px;
+    color:var(--text-dim);
+    font-size:0.74rem;
+    display:flex;
+    justify-content:space-between;
+  }
+  .skeleton{
+    height:2rem;
+    width:140px;
+    background:linear-gradient(90deg,var(--surface-2) 25%,#2a3145 37%,var(--surface-2) 63%);
+    background-size:400% 100%;
+    animation:shimmer 1.4s infinite;
+    border-radius:6px;
+    margin-top:10px;
+  }
+  @keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+  .error-note{
+    color:var(--text-dim);
+    font-size:0.76rem;
+    margin-top:10px;
+    line-height:1.5;
+  }
+  footer{
+    margin-top:24px;
+    text-align:center;
+    color:var(--text-dim);
+    font-size:0.7rem;
+    line-height:1.6;
+  }
+  .status-dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--flat);
+    display:inline-block;
+    margin-right:5px;
+  }
+  .status-dot.live{background:var(--up);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>마켓 대시보드</h1>
+      <div class="sub" id="lastUpdated"><span class="status-dot"></span>불러오는 중…</div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn">새로고침</button>
+  </header>
+
+  <div class="cards" id="cards">
+    <div class="card" data-symbol="^KS11">
+      <div class="card-top"><span class="name">코스피 지수<span class="code">KOSPI</span></span></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="card" data-symbol="^GSPC">
+      <div class="card-top"><span class="name">S&amp;P 500<span class="code">SPX</span></span></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="card" data-symbol="005930.KS">
+      <div class="card-top"><span class="name">삼성전자<span class="code">005930</span></span></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="card" data-symbol="000660.KS">
+      <div class="card-top"><span class="name">SK하이닉스<span class="code">000660</span></span></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="card" data-symbol="001440.KS">
+      <div class="card-top"><span class="name">대한전선<span class="code">001440</span></span></div>
+      <div class="skeleton"></div>
+    </div>
+    <div class="card" data-symbol="034020.KS">
+      <div class="card-top"><span class="name">두산에너빌리티<span class="code">034020</span></span></div>
+      <div class="skeleton"></div>
+    </div>
+  </div>
+
+  <footer>
+    Yahoo Finance 시세 기준 · 최소 15분 지연될 수 있습니다<br>
+    이 창을 열어두면 5분마다 자동으로 새로고침됩니다
+  </footer>
+</div>
+
+<script>
+const symbols = [
+  { code: "^KS11", name: "코스피 지수", short: "KOSPI", currency: "₩", decimals: 2 },
+  { code: "^GSPC", name: "S&P 500", short: "SPX", currency: "$", decimals: 2 },
+  { code: "005930.KS", name: "삼성전자", short: "005930", currency: "₩", decimals: 0 },
+  { code: "000660.KS", name: "SK하이닉스", short: "000660", currency: "₩", decimals: 0 },
+  { code: "001440.KS", name: "대한전선", short: "001440", currency: "₩", decimals: 0 },
+  { code: "034020.KS", name: "두산에너빌리티", short: "034020", currency: "₩", decimals: 0 }
+];
+
+function fmt(num, decimals){
+  return Number(num).toLocaleString("ko-KR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+async function fetchQuote(symbol){
+  const target = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
+  const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
+  const res = await fetch(proxied);
+  if(!res.ok) throw new Error("network");
+  const data = await res.json();
+  const result = data?.chart?.result?.[0];
+  if(!result) throw new Error("no data");
+  const meta = result.meta;
+  return {
+    price: meta.regularMarketPrice,
+    prevClose: meta.chartPreviousClose ?? meta.previousClose,
+    time: meta.regularMarketTime,
+    marketState: meta.marketState
+  };
+}
+
+function renderCard(card, info, sym){
+  const body = card.querySelector(".skeleton, .price-row, .error-note");
+  if(body) body.remove();
+  const existingMeta = card.querySelector(".meta");
+  if(existingMeta) existingMeta.remove();
+
+  if(!info){
+    const note = document.createElement("div");
+    note.className = "error-note";
+    note.textContent = "시세를 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.";
+    card.appendChild(note);
+    return;
+  }
+
+  const diff = info.price - info.prevClose;
+  const pct = (diff / info.prevClose) * 100;
+  const dir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+  const arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "–";
+
+  const row = document.createElement("div");
+  row.className = "price-row";
+  row.innerHTML = `
+    <span class="price">${sym.currency}${fmt(info.price, sym.decimals)}</span>
+    <span class="delta ${dir}">${arrow} ${fmt(Math.abs(diff), sym.decimals)} (${fmt(Math.abs(pct),2)}%)</span>
+  `;
+  card.appendChild(row);
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const t = info.time ? new Date(info.time * 1000).toLocaleString("ko-KR", { hour12: false }) : "-";
+  meta.innerHTML = `<span>기준시각 ${t}</span><span>${info.marketState || ""}</span>`;
+  card.appendChild(meta);
+}
+
+async function refreshAll(){
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.textContent = "불러오는 중…";
+  const cards = document.querySelectorAll(".card");
+
+  const results = await Promise.allSettled(symbols.map(s => fetchQuote(s.code)));
+
+  results.forEach((r, i) => {
+    const card = document.querySelector(`.card[data-symbol="${symbols[i].code}"]`);
+    renderCard(card, r.status === "fulfilled" ? r.value : null, symbols[i]);
+  });
+
+  const anySuccess = results.some(r => r.status === "fulfilled");
+  const statusEl = document.getElementById("lastUpdated");
+  const dot = anySuccess ? '<span class="status-dot live"></span>' : '<span class="status-dot"></span>';
+  statusEl.innerHTML = anySuccess
+    ? `${dot}마지막 업데이트 ${new Date().toLocaleTimeString("ko-KR", { hour12:false })}`
+    : `${dot}업데이트 실패 · 네트워크를 확인해 주세요`;
+
+  btn.disabled = false;
+  btn.textContent = "새로고침";
+}
+
+document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+refreshAll();
+setInterval(refreshAll, 5 * 60 * 1000);
+</script>
+</body>
+</html>
