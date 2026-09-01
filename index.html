@@ -208,17 +208,17 @@ function buildProxyUrls(target){
 async function fetchQuote(symbol){
   const target = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
   const proxies = buildProxyUrls(target);
-  let lastError = null;
+  let lastError = "알 수 없는 오류";
 
   for(const proxied of proxies){
     try{
       const res = await fetch(proxied, { cache: "no-store" });
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      if(!res.ok){ lastError = `HTTP ${res.status} (${new URL(proxied).hostname})`; continue; }
       const data = await res.json();
       const result = data?.chart?.result?.[0];
-      if(!result) throw new Error("no data");
+      if(!result){ lastError = `데이터 없음 (${new URL(proxied).hostname})`; continue; }
       const meta = result.meta;
-      if(meta.regularMarketPrice == null) throw new Error("no price");
+      if(meta.regularMarketPrice == null){ lastError = `가격 없음 (${new URL(proxied).hostname})`; continue; }
       return {
         price: meta.regularMarketPrice,
         prevClose: meta.chartPreviousClose ?? meta.previousClose,
@@ -226,14 +226,15 @@ async function fetchQuote(symbol){
         marketState: meta.marketState
       };
     } catch(err){
-      lastError = err;
+      lastError = `${err.message || err} (${new URL(proxied).hostname})`;
       continue;
     }
   }
-  throw lastError || new Error("all proxies failed");
+  const e = new Error(lastError);
+  throw e;
 }
 
-function renderCard(card, info, sym){
+function renderCard(card, info, sym, errMsg){
   const body = card.querySelector(".skeleton, .price-row, .error-note");
   if(body) body.remove();
   const existingMeta = card.querySelector(".meta");
@@ -242,7 +243,7 @@ function renderCard(card, info, sym){
   if(!info){
     const note = document.createElement("div");
     note.className = "error-note";
-    note.textContent = "시세를 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.";
+    note.textContent = `시세를 불러오지 못했습니다. (${errMsg || "이유 미상"})`;
     card.appendChild(note);
     return;
   }
@@ -277,7 +278,7 @@ async function refreshAll(){
 
   results.forEach((r, i) => {
     const card = document.querySelector(`.card[data-symbol="${symbols[i].code}"]`);
-    renderCard(card, r.status === "fulfilled" ? r.value : null, symbols[i]);
+    renderCard(card, r.status === "fulfilled" ? r.value : null, symbols[i], r.status === "rejected" ? r.reason.message : null);
   });
 
   const anySuccess = results.some(r => r.status === "fulfilled");
